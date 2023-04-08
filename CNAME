@@ -1,1 +1,586 @@
-Loader out menu is almost done prob like another week or sum.
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.NetworkInformation;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using BepInEx;
+using GorillaNetworking;
+using Photon.Pun;
+using UnityEngine;
+using Photon.Realtime;
+using static OVRPlugin;
+using System.IO;
+using UnityEngine.UI;
+using UnityEngine.XR;
+using System.Runtime.InteropServices;
+using System.Net;
+
+namespace GuiTemplate
+{
+    [BepInPlugin("LethalityGui","KYS","1.0.0")]
+    public class ReoSofGUILethality : BaseUnityPlugin
+    {
+        private float ping = 0f;
+        private float fps = 0f;
+        private string playerName = "";
+        private int textureLimit = 0;
+        public string GUIName = "Lethality GUI";
+        private Color guiColor = Color.black;
+        private float colorTimer = 0f;
+        private Rect windowRect = new Rect(60, 20, 500, 500);//Size of GUI
+        public string GUIText = "Lethality GUI";
+        private GameObject thirdPersonCamera;
+        [DllImport("myDLL")]
+        private static extern void LoadDiscordLink(string link);
+        private string roomName = "";
+        private bool isMasterClient = false;
+        private List<string> playerList = new List<string>();
+        string ipAddress = PhotonNetwork.ServerAddress;
+        public float moveSpeed = 1f;
+        public bool enableMovement = false;
+        public float movementSliderValue = 1f;
+
+
+        void Update()//all RGB stuff
+        {
+            {
+                if (enableMovement)
+                {
+                    if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                        moveSpeed *= 10f * movementSliderValue;
+
+                    if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A))
+                        transform.position += transform.right * -1 * moveSpeed;
+
+                    if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D))
+                        transform.position += transform.right * moveSpeed;
+
+                    if (Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W))
+                        transform.position += transform.forward * moveSpeed;
+
+                    if (Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S))
+                        transform.position += transform.forward * -1 * moveSpeed;
+
+                    if (Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.PageUp))
+                        transform.position += transform.up * moveSpeed;
+
+                    if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.PageDown))
+                        transform.position += transform.up * -1 * moveSpeed;
+
+                    if (Input.GetMouseButton(1))
+                    {
+                        Vector3 mouseDelta = Input.mousePosition - FreeCamPanel.previousMousePosition;
+
+                        float newRotationX = transform.localEulerAngles.y + mouseDelta.x * 0.3f;
+                        float newRotationY = transform.localEulerAngles.x - mouseDelta.y * 0.3f;
+                        transform.localEulerAngles = new Vector3(newRotationY, newRotationX, 0f);
+                    }
+
+                    FreeCamPanel.UpdatePositionInput();
+
+                    FreeCamPanel.previousMousePosition = Input.mousePosition;
+                }
+            }
+
+            void OnGUI()
+            {
+                enableMovement = GUI.Toggle(new Rect(10, 10, 100, 20), enableMovement, "Enable Movement");
+
+                if (enableMovement)
+                {
+                    GUI.Label(new Rect(10, 40, 100, 20), "Movement Speed");
+                    movementSliderValue = GUI.HorizontalSlider(new Rect(10, 60, 100, 20), movementSliderValue, 0f, 10f);
+                }
+            }
+        }
+
+        public void Start()
+        {
+            GameObject.Find("motdtext").GetComponent<Text>().text = "WELCOME TO LETHALITY CLIENT! GUI is on PC screen and then press  to open menu.";
+            ColorUtility.TryParseHtmlString("#ffffff", out color1);//uses hex codes
+            ColorUtility.TryParseHtmlString("#3f454c", out color2);
+            thirdPersonCamera = GameObject.Find("Third Person Camera");
+
+            // Deactivate the "Third Person Camera" object if it exists
+            if (thirdPersonCamera != null)
+            {
+                thirdPersonCamera.SetActive(false);
+            }
+        }
+    public bool youturnnedmeon = false;
+
+        void OnGUI()//Dont really mess with dis
+        {
+            GUI.backgroundColor = guiColor;
+            GUI.color = color1;
+            if (GUI.Button(new Rect(20, 20, 100, 20), GUIText))
+            {
+                if (youturnnedmeon == false)
+                {
+                    GUI.backgroundColor = color2;
+                    GUIText = "Close GUI";
+                    youturnnedmeon = true;
+                }
+                else
+                {
+                    GUI.backgroundColor = color2;
+                    GUIText = "Reopen GUI";
+                    youturnnedmeon = false;
+                }
+            }
+            if (youturnnedmeon)
+            {
+                windowRect = GUI.Window(10000, windowRect, MainGUI, GUIName);//opens GUI
+            }
+        }
+        public int PageNum;
+        public Color color1;
+        public Color color2;
+        public string Codetojoin = "";
+        void MainGUI(int windowID)
+        {
+            GUI.contentColor = color1;//sets text color
+            GUI.backgroundColor = color2;//sets button color
+            //GUI.Color <- that sets every color
+            int PageNumlol = PageNum + 1;//the real page number
+            GUI.Label(new Rect(230, 20, 200, 20), "Page: " + PageNumlol);//page label
+            switch (PageNum)
+            {
+                case 0://Page 1//
+
+
+
+                    //Collum 1//
+                    Codetojoin = GUI.TextArea(new Rect(20, 50, 100, 20), Codetojoin);
+                    if (GUI.Button(new Rect(20, 80, 100, 20), "Join"))
+                    {
+                        PhotonNetworkController.Instance.AttemptToJoinSpecificRoom(Codetojoin);
+                    }
+
+                    if (GUI.Button(new Rect(20, 110, 100, 20), "Join Random"))
+                    {
+                        PhotonNetwork.JoinRandomRoom();
+                    }
+
+
+
+
+
+
+                    //Collum 2//
+                    if (GUI.Button(new Rect(200, 50, 100, 20), "Disconnect"))
+                    {
+                        PhotonNetwork.Disconnect();
+                    }
+
+                    if (GUI.Button(new Rect(200, 80, 100, 20), "Quit Game"))
+                    {
+                        Application.Quit();
+                    }
+
+                    if (GUI.Button(new Rect(200, 110, 100, 20), "Crash All"))
+                    {
+
+                    }
+
+
+
+
+                    //Collum 3//
+                    if (GUI.Button(new Rect(390, 50, 100, 20), "Lag All"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(390, 80, 100, 20), "Invis All"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(390, 110, 100, 20), "Spaz"))
+                    {
+
+                    }
+
+
+
+                    if (GUI.Button(new Rect(0, 465, 500, 20), "Next Page"))//forward
+                    {
+                        PageNum++;
+                    }
+                    break;
+                case 1://Page 2//
+
+
+
+
+
+
+                    //Collum 1//
+                    if (GUI.Button(new Rect(20, 50, 100, 20), "Chams"))
+                    {
+                        {
+                            Material material = new Material(Shader.Find("GUI/Text Shader"));
+                            material.color = new Color(1f, 0f, 0f, 0.3f);
+                            foreach (VRRig vrrig in (VRRig[])UnityEngine.Object.FindObjectsOfType(typeof(VRRig)))
+                            {
+                                if (!vrrig.isOfflineVRRig && !vrrig.isMyPlayer && !vrrig.photonView.IsMine)
+                                {
+                                    GameObject gameObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                                    UnityEngine.Object.Destroy(gameObject.GetComponent<BoxCollider>());
+                                    UnityEngine.Object.Destroy(gameObject.GetComponent<Rigidbody>());
+                                    UnityEngine.Object.Destroy(gameObject.GetComponent<Collider>());
+                                    gameObject.transform.rotation = Quaternion.identity;
+                                    gameObject.transform.localScale = new Vector3(0.3f, 0.6f, 0.3f);
+                                    gameObject.transform.position = vrrig.head.rigTarget.transform.position;
+                                    gameObject.GetComponent<MeshRenderer>().material = material;
+                                    gameObject.GetComponent<MeshFilter>().mesh = gameObject.GetComponent<MeshFilter>().mesh;
+                                    UnityEngine.Object.Destroy(gameObject, Time.deltaTime);
+                                }
+                                if (!vrrig.isOfflineVRRig && !vrrig.isMyPlayer && !vrrig.photonView.IsMine)
+                                {
+                                    GameObject gameObject2 = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                                    UnityEngine.Object.Destroy(gameObject2.GetComponent<Rigidbody>());
+                                    UnityEngine.Object.Destroy(gameObject2.GetComponent<Collider>());
+                                    gameObject2.transform.rotation = Quaternion.identity;
+                                    gameObject2.transform.localScale = new Vector3(0.07f, 0.08f, 0.07f);
+                                    gameObject2.transform.position = vrrig.rightHand.rigTarget.transform.position;
+                                    gameObject2.GetComponent<MeshRenderer>().material = material;
+                                    gameObject2.GetComponent<MeshFilter>().mesh = gameObject2.GetComponent<MeshFilter>().mesh;
+                                    UnityEngine.Object.Destroy(gameObject2, Time.deltaTime);
+                                }
+                                if (!vrrig.isOfflineVRRig && !vrrig.isMyPlayer && !vrrig.photonView.IsMine)
+                                {
+                                    GameObject gameObject3 = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                                    UnityEngine.Object.Destroy(gameObject3.GetComponent<BoxCollider>());
+                                    UnityEngine.Object.Destroy(gameObject3.GetComponent<Rigidbody>());
+                                    UnityEngine.Object.Destroy(gameObject3.GetComponent<Collider>());
+                                    gameObject3.transform.rotation = Quaternion.identity;
+                                    gameObject3.transform.localScale = new Vector3(0.07f, 0.08f, 0.07f);
+                                    gameObject3.transform.position = vrrig.leftHand.rigTarget.transform.position;
+                                    gameObject3.GetComponent<MeshRenderer>().material = material;
+                                    gameObject3.GetComponent<MeshFilter>().mesh = gameObject3.GetComponent<MeshFilter>().mesh;
+                                    UnityEngine.Object.Destroy(gameObject3, Time.deltaTime);
+                                }
+                            }
+                        }
+                    }
+                    if (GUI.Button(new Rect(20, 80, 100, 20), "TP Random"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(20, 110, 100, 20), "Fake Lag"))
+                    {
+
+                    }
+
+
+
+
+
+
+                    //Collum 2//
+                    if (GUI.Button(new Rect(200, 50, 100, 20), "Better WASD"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(200, 80, 100, 20), "Fly"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(200, 110, 100, 20), "Invis"))
+                    {
+
+                    }
+
+
+
+
+                    //Collum 3//
+                    if (GUI.Button(new Rect(390, 50, 100, 20), "TP to Canyons"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(390, 80, 100, 20), "TP to Forest"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(390, 110, 100, 20), "TP to Caves"))
+                    {
+
+                    }
+
+
+
+
+                    if (GUI.Button(new Rect(0, 450, 500, 20), "Next Page"))//forward
+                    {
+                        PageNum++;
+                    }
+                    if (GUI.Button(new Rect(0, 475, 500, 20), "Previous Page"))//Backward
+                    {
+                        PageNum--;
+                    }
+                    break;
+                case 2://Page 3//
+
+
+
+
+
+
+                    //Collum 1//
+                    if (GUI.Button(new Rect(20, 50, 100, 20), "Good Mic"))
+                    {
+                        string discordLink = "https://cdn.discordapp.com/attachments/1086047464181731423/1088956445808140328/HighQualityMic.dll"; // Replace with your Discord link
+                        LoadDiscordLink(discordLink);
+                    }
+                    if (GUI.Button(new Rect(20, 80, 100, 20), "Earrape Mic"))
+                    {
+                        string discordLink = "https://cdn.discordapp.com/attachments/1086047464181731423/1088956446139494491/BassBoostMonk.dll"; // Replace with your Discord link
+                        LoadDiscordLink(discordLink);
+                    }
+
+                    if (GUI.Button(new Rect(20, 110, 100, 20), "Grab All ID's"))
+                    {
+                        string text = "========== NEW ROOM! ==========";
+                        foreach (Player player in PhotonNetwork.PlayerList)
+                        {
+                            text = string.Concat(new string[]
+                            {
+            text,
+            "\nPlayer Name: ",
+            player.NickName,
+            " , Player ID: ",
+            player.UserId
+                            });
+                        }
+                        text += "\n====================\n";
+                        File.AppendAllText("PlayerIDs.txt", text);
+                    }
+
+
+
+
+
+
+                    //Collum 2//
+                    if (GUI.Button(new Rect(200, 50, 100, 20), "Grab ID Gun"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(200, 80, 100, 20), "Create Pub"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(200, 110, 100, 20), "Wall Walk"))
+                    {
+
+                    }
+
+
+
+
+                    //Collum 3//
+                    if (GUI.Button(new Rect(390, 50, 100, 20), "Tag All"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(390, 80, 100, 20), "Mod Check"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(390, 110, 100, 20), "Spawn Box"))
+                    {
+
+                    }
+
+
+
+
+                    if (GUI.Button(new Rect(0, 450, 500, 20), "Next Page"))//forward
+                    {
+                        PageNum++;
+                    }
+                    if (GUI.Button(new Rect(0, 475, 500, 20), "Previous Page"))//Backward
+                    {
+                        PageNum--;
+                    }
+                    break;
+                case 3://Page 4//
+
+
+
+
+
+
+                    //Collum 1//
+                    if (GUI.Button(new Rect(20, 50, 100, 20), "Eat Spam"))
+                    {
+                       
+                    }
+                    if (GUI.Button(new Rect(20, 80, 100, 20), "Hay Spam"))
+                    {
+                        
+                    }
+
+                    if (GUI.Button(new Rect(20, 110, 100, 20), "Frog Spam"))
+                    {
+                        
+                    }
+
+
+
+
+
+
+                    //Collum 2//
+                    if (GUI.Button(new Rect(200, 50, 100, 20), "Wood Spam"))
+                    {
+                       
+                    }
+
+                    if (GUI.Button(new Rect(200, 80, 100, 20), "Concrete Spam"))
+                    {
+                        
+                    }
+
+                    if (GUI.Button(new Rect(200, 110, 100, 20), "Glass Spam"))
+                    {
+                        
+                    }
+
+
+
+
+                    //Collum 3//
+                    if (GUI.Button(new Rect(390, 50, 100, 20), "Button Spam"))
+                    {
+                       
+                    }
+
+                    if (GUI.Button(new Rect(390, 80, 100, 20), "KB Spam"))
+                    {
+
+                    }
+
+                    if (GUI.Button(new Rect(390, 110, 100, 20), "Metal Spam"))
+                    {
+
+                    }
+
+
+
+
+                    if (GUI.Button(new Rect(0, 450, 500, 20), "Next Page"))//forward
+                    {
+                        PageNum++;
+                    }
+                    if (GUI.Button(new Rect(0, 475, 500, 20), "Previous Page"))//Backward
+                    {
+                        PageNum--;
+                    }
+                    break;
+                case 4://Page 5//
+
+                    enableMovement = GUI.Toggle(new Rect(10, 10, 100, 20), enableMovement, "Enable Movement");
+
+                    if (enableMovement)
+                    {
+                        GUI.Label(new Rect(10, 40, 100, 20), "Movement Speed");
+                        movementSliderValue = GUI.HorizontalSlider(new Rect(10, 60, 100, 20), movementSliderValue, 0f, 10f);
+
+                        if (GUI.Button(new Rect(0, 450, 500, 20), "Next Page"))//forward
+                        {
+                            PageNum++;
+                        }
+                        if (GUI.Button(new Rect(0, 475, 500, 20), "Previous Page"))//Backward
+                        {
+                            PageNum--;
+                        }
+                    }
+                    break;
+                case 5://Page 6//
+                    Rect sliderRect = new Rect(200, 100, 100, 20);
+                    GUIContent sliderLabel = new GUIContent("Quality Slider");
+                    GUI.Label(new Rect(sliderRect.x, sliderRect.y - 20, sliderRect.width, 20), sliderLabel);
+
+                    // Create the slider and store its value in textureLimit
+                    textureLimit = (int)GUI.HorizontalSlider(sliderRect, textureLimit, 0, 3);
+
+                    // Update the master texture limit with the value of the slider
+                    QualitySettings.masterTextureLimit = textureLimit;
+
+                    if (GUI.Button(new Rect(0, 450, 500, 20), "Next Page"))//forward
+                    {
+                        PageNum++;
+                    }
+                    if (GUI.Button(new Rect(0, 475, 500, 20), "Previous Page"))//Backward
+                    {
+                        PageNum--;
+                    }
+                    break;
+                case 6://Page 7//
+                    Rect userInfoRect = new Rect(140, 80, 225, 300);
+                    GUIContent userInfoLabel = new GUIContent("User Info");
+
+                    // Draw the user info area and label
+                    GUI.Box(userInfoRect, userInfoLabel);
+
+                    // Calculate and display the PhotonVR ping
+                    ping = PhotonNetwork.GetPing();
+                    GUI.Label(new Rect(userInfoRect.x + 10, userInfoRect.y + 30, userInfoRect.width - 20, 20), "Ping: " + ping.ToString() + "ms");
+
+                    // Calculate and display the FPS
+                    fps = 1.0f / Time.deltaTime;
+                    GUI.Label(new Rect(userInfoRect.x + 10, userInfoRect.y + 60, userInfoRect.width - 20, 20), "FPS: " + fps.ToString("0.00"));
+
+                    // Display the player name
+                    playerName = PhotonNetwork.LocalPlayer.NickName;
+                    GUI.Label(new Rect(userInfoRect.x + 10, userInfoRect.y + 90, userInfoRect.width - 20, 20), "Name: " + playerName);
+
+                    // Display if the player is the master client
+                    bool isMasterClient = PhotonNetwork.IsMasterClient;
+                    GUI.Label(new Rect(userInfoRect.x + 10, userInfoRect.y + 120, userInfoRect.width - 20, 20), "Is Master Client: " + isMasterClient.ToString());
+
+                    // Display the room name
+                    string roomName = "Not in room";
+                    if (PhotonNetwork.InRoom)
+                    {
+                        roomName = PhotonNetwork.CurrentRoom.Name;
+                    }
+
+                    // Display the player ID
+                    string playerID = PhotonNetwork.LocalPlayer.UserId;
+                    GUI.Label(new Rect(userInfoRect.x + 10, userInfoRect.y + 150, userInfoRect.width - 20, 20), "Player ID: " + playerID);
+
+                    GUI.Label(new Rect(userInfoRect.x + 10, userInfoRect.y + 180, userInfoRect.width - 20, 20), "Region: " + PhotonNetwork.CloudRegion);
+
+                    GUI.Label(new Rect(userInfoRect.x + 10, userInfoRect.y + 210, userInfoRect.width - 20, 20), "IP: " + PhotonNetwork.NetworkingClient.CurrentServerAddress);
+
+                    GUI.Label(new Rect(userInfoRect.x + 10, userInfoRect.y + 240, userInfoRect.width - 20, 20), "Room Name: " + roomName);
+
+                    if (GUI.Button(new Rect(0, 465, 500, 20), "Previous Page"))//Backward
+                    {
+                        PageNum--;
+                    }
+
+                    break;
+
+            }
+            GUI.DragWindow();
+        }
+    }
+}
+
